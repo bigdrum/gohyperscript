@@ -42,44 +42,54 @@ func (node *Node) WriteIndent(w io.Writer, indent string, indentStep string) err
 		w.Write([]byte(html.EscapeString(node.text)))
 		return nil
 	}
-	w.Write([]byte(indent))
-	w.Write([]byte("<"))
-	w.Write([]byte(node.tag))
 
-	if len(node.classNames) > 0 {
-		w.Write([]byte(` class="`))
-		sep := []byte{}
-		for _, c := range sortedClassNames(node.classNames) {
-			w.Write(sep)
-			w.Write([]byte(html.EscapeString(c)))
-			sep = byteSpace
+	cindent := indent
+	if node.tag != "" {
+		w.Write([]byte(indent))
+		w.Write([]byte("<"))
+		w.Write([]byte(node.tag))
+
+		if len(node.classNames) > 0 {
+			w.Write([]byte(` class="`))
+			sep := []byte{}
+			for _, c := range sortedClassNames(node.classNames) {
+				w.Write(sep)
+				w.Write([]byte(html.EscapeString(c)))
+				sep = byteSpace
+			}
+			w.Write([]byte(`"`))
 		}
-		w.Write([]byte(`"`))
+
+		attributeKeys := sortedAttributes(node.attributes)
+		for _, k := range attributeKeys {
+			w.Write([]byte(" "))
+			w.Write([]byte(k))
+			w.Write([]byte(`="`))
+			w.Write([]byte(html.EscapeString(node.attributes[k])))
+			w.Write([]byte(`"`))
+		}
+		w.Write([]byte(">"))
+		cindent += indentStep
 	}
 
-	attributeKeys := sortedAttributes(node.attributes)
-	for _, k := range attributeKeys {
-		w.Write([]byte(" "))
-		w.Write([]byte(k))
-		w.Write([]byte(`="`))
-		w.Write([]byte(html.EscapeString(node.attributes[k])))
-		w.Write([]byte(`"`))
-	}
-	w.Write([]byte(">"))
-	cindent := indent + indentStep
-	for _, c := range node.children {
-		if c.text == "" {
+	for i, c := range node.children {
+		if i == 0 && c.text == "" && node.tag != "" {
 			w.Write([]byte("\n"))
 		}
 		c.WriteIndent(w, cindent, indentStep)
+		if c.text == "" && (node.tag != "" || i != len(node.children)-1) {
+			w.Write([]byte("\n"))
+			if i == len(node.children)-1 {
+				w.Write([]byte(indent))
+			}
+		}
 	}
-	if len(node.children) > 0 {
-		w.Write([]byte("\n"))
-		w.Write([]byte(indent))
+
+	if node.tag != "" {
+		w.Write([]byte("</"))
+		w.Write([]byte(node.tag))
+		w.Write([]byte(">"))
 	}
-	w.Write([]byte("</"))
-	w.Write([]byte(node.tag))
-	w.Write([]byte(">"))
 	return nil
 }
 

@@ -97,21 +97,34 @@ func parseClassNames(value interface{}, classNames map[string]bool) error {
 	}
 }
 
+// Add appends a child.
+func (node *Node) Add(child *Node) {
+	node.children = append(node.children, *child)
+}
+
 // H constructs a virtual DOM node.
-func H(tag string, nodes ...interface{}) *Node {
-	tag, id, classNames, err := parseTag(tag)
-	node := &Node{tag: tag}
-	if err != nil {
-		node.err = err
+func H(nodes ...interface{}) *Node {
+	node := &Node{}
+	if len(nodes) == 0 {
 		return node
 	}
-	node.attributes = map[string]string{}
-	if id != "" {
-		node.attributes["id"] = id
-	}
-	node.classNames = map[string]bool{}
-	for i := range classNames {
-		node.classNames[classNames[i]] = true
+
+	if tag, ok := nodes[0].(string); ok {
+		tag, id, classNames, err := parseTag(tag)
+		node.tag = tag
+		if err != nil {
+			node.err = err
+			return node
+		}
+		node.attributes = map[string]string{}
+		if id != "" {
+			node.attributes["id"] = id
+		}
+		node.classNames = map[string]bool{}
+		for i := range classNames {
+			node.classNames[classNames[i]] = true
+		}
+		nodes = nodes[1:]
 	}
 	for _, n := range nodes {
 		switch cnode := n.(type) {

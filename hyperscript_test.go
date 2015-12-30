@@ -1,6 +1,9 @@
 package hyperscript_test
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 import diff "github.com/kylelemons/godebug/diff"
 import . "github.com/bigdrum/gohyperscript"
@@ -19,6 +22,13 @@ func TestBasic(t *testing.T) {
 	node := H("#header.content",
 		H("h1", "hello world"),
 		H(".entity", "hoho"),
+		func() *Node {
+			n := H()
+			for i := 0; i < 2; i++ {
+				n.Add(H("p", fmt.Sprintf("p %d", i)))
+			}
+			return n
+		}(),
 		H("form.control",
 			Attr{"data-haha": "kk", "class": "hello"},
 			Style{}),
@@ -31,21 +41,20 @@ func TestBasic(t *testing.T) {
 	expectedS := `<html lang="en">
   <head>
     <meta charset="utf-8"></meta>
-    <title>hello
-    </title>
+    <title>hello</title>
   </head>
   <body>
     <div class="content" id="header">
-      <h1>hello world
-      </h1>
-      <div class="entity">hoho
-      </div>
+      <h1>hello world</h1>
+      <div class="entity">hoho</div>
+      <p>p 0</p>
+      <p>p 1</p>
       <form class="control hello" data-haha="kk"></form>
     </div>
   </body>
 </html>`
 	if s != expectedS {
-		t.Error(diff.Diff(s, expectedS))
+		t.Error(s, diff.Diff(s, expectedS))
 	}
 }
 
