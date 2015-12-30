@@ -7,3 +7,4 @@ Creates virtual dom trees.
 - [ ] Provide stack trace for errors.
 - [ ] Special support for style.
 - [ ] Tune performance.
+- [ ] Context aware escape.
