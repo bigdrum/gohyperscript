@@ -6,3 +6,4 @@ Creates virtual dom trees.
 - [ ] Validate tag, attribute key.
 - [ ] Provide stack trace for errors.
 - [ ] Special support for style.
+- [ ] Tune performance.
