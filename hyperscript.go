@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"sort"
 	"strings"
 )
 
@@ -22,6 +23,32 @@ type Style map[string]interface{}
 
 var byteSpace = []byte(" ")
 
+func sortedAttributes(m map[string]string) []string {
+	l := make([]string, len(m))
+	i := 0
+	for k := range m {
+		l[i] = k
+		i++
+	}
+	sort.Strings(l)
+	return l
+}
+
+func sortedClassNames(m map[string]bool) []string {
+	l := make([]string, len(m))
+	i := 0
+	for k, v := range m {
+		if !v {
+			continue
+		}
+		l[i] = k
+		i++
+	}
+	l = l[:i]
+	sort.Strings(l)
+	return l
+}
+
 func (node *Node) WriteTo(w io.Writer, indent string, indentStep string) error {
 	if node.err != nil {
 		return node.err
@@ -37,21 +64,20 @@ func (node *Node) WriteTo(w io.Writer, indent string, indentStep string) error {
 	if len(node.classNames) > 0 {
 		w.Write([]byte(` class="`))
 		sep := []byte{}
-		for k, v := range node.classNames {
-			if !v {
-				continue
-			}
+		for _, c := range sortedClassNames(node.classNames) {
 			w.Write(sep)
-			w.Write([]byte(k))
+			w.Write([]byte(c))
 			sep = byteSpace
 		}
 		w.Write([]byte(`"`))
 	}
-	for k, v := range node.attributes {
+
+	attributeKeys := sortedAttributes(node.attributes)
+	for _, k := range attributeKeys {
 		w.Write([]byte(" "))
 		w.Write([]byte(k))
 		w.Write([]byte(`="`))
-		w.Write([]byte(v))
+		w.Write([]byte(node.attributes[k]))
 		w.Write([]byte(`"`))
 	}
 	w.Write([]byte(">"))
@@ -79,11 +105,6 @@ func (node *Node) ToString() (string, error) {
 }
 
 func parseTag(tag string) (string, string, []string, error) {
-	const (
-		sTag   = iota
-		sID    = iota
-		sClass = iota
-	)
 	tagEnd := -1
 	idStart := -1
 	id := ""

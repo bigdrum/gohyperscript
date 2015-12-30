@@ -2,6 +2,7 @@ package hyperscript_test
 
 import "testing"
 
+import diff "github.com/kylelemons/godebug/diff"
 import . "github.com/bigdrum/gohyperscript"
 
 func page(title string, content *Node) *Node {
@@ -27,7 +28,23 @@ func TestBasic(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if s != "" {
-		t.Error(s)
+	expectedS := `<html lang="en">
+  <head>
+    <meta charset="utf-8"></meta>
+    <title>hello
+    </title>
+  </head>
+  <body>
+    <div class="content" id="header">
+      <h1>hello world
+      </h1>
+      <div class="entity">hoho
+      </div>
+      <form class="control hello" data-haha="kk"></form>
+    </div>
+  </body>
+</html>`
+	if s != expectedS {
+		t.Error(diff.Diff(s, expectedS))
 	}
 }
