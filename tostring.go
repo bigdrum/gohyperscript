@@ -33,7 +33,8 @@ func sortedClassNames(m map[string]bool) []string {
 	return l
 }
 
-func (node *Node) WriteTo(w io.Writer, indent string, indentStep string) error {
+// WriteIndent encodes the given dom tree into HTML.
+func (node *Node) WriteIndent(w io.Writer, indent string, indentStep string) error {
 	if node.err != nil {
 		return node.err
 	}
@@ -70,7 +71,7 @@ func (node *Node) WriteTo(w io.Writer, indent string, indentStep string) error {
 		if c.text == "" {
 			w.Write([]byte("\n"))
 		}
-		c.WriteTo(w, cindent, indentStep)
+		c.WriteIndent(w, cindent, indentStep)
 	}
 	if len(node.children) > 0 {
 		w.Write([]byte("\n"))
@@ -82,8 +83,9 @@ func (node *Node) WriteTo(w io.Writer, indent string, indentStep string) error {
 	return nil
 }
 
+// ToString converts the dom tree into HTML.
 func (node *Node) ToString() (string, error) {
 	var buffer bytes.Buffer
-	err := node.WriteTo(&buffer, "", "  ")
+	err := node.WriteIndent(&buffer, "", "  ")
 	return buffer.String(), err
 }

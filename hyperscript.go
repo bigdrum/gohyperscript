@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// Node represents a virtual dom node.
 type Node struct {
 	tag        string
 	text       string
@@ -14,7 +15,10 @@ type Node struct {
 	err        error
 }
 
+// Attr specifies DOM attributes of a node.
 type Attr map[string]interface{}
+
+// Style provides a conenient way to specify the inline style a node.
 type Style map[string]interface{}
 
 var byteSpace = []byte(" ")
@@ -90,6 +94,7 @@ func parseClassNames(value interface{}, classNames map[string]bool) error {
 	}
 }
 
+// H constructs a virtual DOM node.
 func H(tag string, nodes ...interface{}) *Node {
 	tag, id, classNames, err := parseTag(tag)
 	node := &Node{tag: tag}
