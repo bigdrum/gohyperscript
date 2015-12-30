@@ -48,3 +48,26 @@ func TestBasic(t *testing.T) {
 		t.Error(diff.Diff(s, expectedS))
 	}
 }
+
+func TestEscape(t *testing.T) {
+	// This library doesn't support CSS escape.
+	// We just test it won't go crazy.
+	s, err := H("#test'.d'", Attr{"data-a": `"'<<>><script>`}).ToString()
+	if err != nil {
+		t.Error(err)
+	}
+	expectedS := `<div class="d&#39;" data-a="&#34;&#39;&lt;&lt;&gt;&gt;&lt;script&gt;" id="test&#39;"></div>`
+	if s != expectedS {
+		t.Error(diff.Diff(s, expectedS))
+	}
+
+	_, err = H("<#").ToString()
+	if err == nil {
+		t.Error("Expected error.")
+	}
+
+	_, err = H(">#").ToString()
+	if err == nil {
+		t.Error("Expected error.")
+	}
+}

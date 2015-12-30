@@ -32,6 +32,9 @@ func parseTag(tag string) (string, string, []string, error) {
 
 	tlen := len(tag)
 	for i, c := range tag {
+		if c == '>' || c == '<' {
+			return "", "", nil, fmt.Errorf("special charactor not supported for tag/class/id: %s", tag)
+		}
 		if c == '#' {
 			if tagEnd == -1 {
 				tagEnd = i

@@ -51,7 +51,7 @@ func (node *Node) WriteIndent(w io.Writer, indent string, indentStep string) err
 		sep := []byte{}
 		for _, c := range sortedClassNames(node.classNames) {
 			w.Write(sep)
-			w.Write([]byte(c))
+			w.Write([]byte(html.EscapeString(c)))
 			sep = byteSpace
 		}
 		w.Write([]byte(`"`))
@@ -62,7 +62,7 @@ func (node *Node) WriteIndent(w io.Writer, indent string, indentStep string) err
 		w.Write([]byte(" "))
 		w.Write([]byte(k))
 		w.Write([]byte(`="`))
-		w.Write([]byte(node.attributes[k]))
+		w.Write([]byte(html.EscapeString(node.attributes[k])))
 		w.Write([]byte(`"`))
 	}
 	w.Write([]byte(">"))
