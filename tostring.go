@@ -34,7 +34,7 @@ func sortedClassNames(m map[string]bool) []string {
 }
 
 // WriteIndent encodes the given dom tree into HTML.
-func (node *Node) WriteIndent(w io.Writer, indent string, indentStep string) error {
+func (node *Node) WriteIndent(w io.Writer, indent []byte, indentStep []byte) error {
 	if node.err != nil {
 		return node.err
 	}
@@ -45,7 +45,7 @@ func (node *Node) WriteIndent(w io.Writer, indent string, indentStep string) err
 
 	cindent := indent
 	if node.tag != "" {
-		w.Write([]byte(indent))
+		w.Write(indent)
 		w.Write([]byte("<"))
 		w.Write([]byte(node.tag))
 
@@ -62,14 +62,14 @@ func (node *Node) WriteIndent(w io.Writer, indent string, indentStep string) err
 
 		attributeKeys := sortedAttributes(node.attributes)
 		for _, k := range attributeKeys {
-			w.Write([]byte(" "))
+			w.Write(byteSpace)
 			w.Write([]byte(k))
 			w.Write([]byte(`="`))
 			w.Write([]byte(html.EscapeString(node.attributes[k])))
 			w.Write([]byte(`"`))
 		}
 		w.Write([]byte(">"))
-		cindent += indentStep
+		cindent = append(indent, indentStep...)
 	}
 
 	for i, c := range node.children {
@@ -80,7 +80,7 @@ func (node *Node) WriteIndent(w io.Writer, indent string, indentStep string) err
 		if c.text == "" && (node.tag != "" || i != len(node.children)-1) {
 			w.Write([]byte("\n"))
 			if i == len(node.children)-1 {
-				w.Write([]byte(indent))
+				w.Write(indent)
 			}
 		}
 	}
@@ -96,6 +96,6 @@ func (node *Node) WriteIndent(w io.Writer, indent string, indentStep string) err
 // ToString converts the dom tree into HTML.
 func (node *Node) ToString() (string, error) {
 	var buffer bytes.Buffer
-	err := node.WriteIndent(&buffer, "", "  ")
+	err := node.WriteIndent(&buffer, []byte{}, []byte("  "))
 	return buffer.String(), err
 }
