@@ -46,10 +46,10 @@ func TestBasic(t *testing.T) {
   <body>
     <div class="content" id="header">
       <h1>hello world</h1>
-      <div class="entity">hoho</div>
+      <div class="entity" style="margin-bottom:10px;margin-top:10px;">hoho</div>
       <p>p 0</p>
       <p>p 1</p>
-      <form class="control hello" data-haha="kk"></form>
+      <form class="control hello" data-haha="kk" style="margin-top:10px;"></form>
     </div>
   </body>
 </html>`
