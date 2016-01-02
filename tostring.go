@@ -7,6 +7,8 @@ import (
 	"sort"
 )
 
+var byteSpace = []byte(" ")
+
 func sortedAttributes(m map[string]string) []string {
 	l := make([]string, len(m))
 	i := 0
@@ -40,6 +42,10 @@ func (node *Node) WriteIndent(w io.Writer, indent []byte, indentStep []byte) err
 	}
 	if node.text != "" {
 		w.Write([]byte(html.EscapeString(node.text)))
+		return nil
+	}
+	if node.raw != "" {
+		w.Write([]byte(node.raw))
 		return nil
 	}
 

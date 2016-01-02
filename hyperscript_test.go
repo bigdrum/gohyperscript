@@ -21,7 +21,7 @@ func page(title string, content *Node) *Node {
 func TestBasic(t *testing.T) {
 	node := H("#header.content",
 		H("h1", "hello world"),
-		H(".entity", "hoho"),
+		H(".entity", Style{"margin-top": "10px", "margin-bottom": "10px"}, "hoho"),
 		func() *Node {
 			n := H()
 			for i := 0; i < 2; i++ {
@@ -30,8 +30,8 @@ func TestBasic(t *testing.T) {
 			return n
 		}(),
 		H("form.control",
-			Attr{"data-haha": "kk", "class": "hello"},
-			Style{}),
+			Style{"margin-top": "10px"},
+			Attr{"data-haha": "kk", "class": "hello"}),
 	)
 	node = page("hello", node)
 	s, err := node.ToString()

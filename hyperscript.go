@@ -1,7 +1,10 @@
 package hyperscript
 
 import (
+	"bytes"
 	"fmt"
+	"runtime"
+	"sort"
 	"strings"
 )
 
@@ -9,6 +12,7 @@ import (
 type Node struct {
 	tag        string
 	text       string
+	raw        string
 	attributes map[string]string
 	classNames map[string]bool
 	children   []Node
@@ -21,7 +25,19 @@ type Attr map[string]interface{}
 // Style provides a conenient way to specify the inline style a node.
 type Style map[string]interface{}
 
-var byteSpace = []byte(" ")
+// DangerousRaw outputs unescaped string. Use at your own risk.
+type DangerousRaw string
+
+func sortedKeyForInterfaceMap(m map[string]interface{}) []string {
+	l := make([]string, len(m))
+	i := 0
+	for k := range m {
+		l[i] = k
+		i++
+	}
+	sort.Strings(l)
+	return l
+}
 
 func parseTag(tag string) (string, string, []string, error) {
 	tagEnd := -1
@@ -92,13 +108,27 @@ func parseClassNames(value interface{}, classNames map[string]bool) error {
 			classNames[name] = true
 		}
 		return nil
+	case map[string]bool:
+		for name, on := range v {
+			classNames[name] = on
+		}
+		return nil
 	default:
 		return fmt.Errorf("invalid class attribute value %v", value)
 	}
 }
 
+func errorfDepth(depth int, format string, a ...interface{}) error {
+	_, fn, line, _ := runtime.Caller(depth + 1)
+	msg := fmt.Sprintf(format, a...)
+	return fmt.Errorf("%v, %v: %s", fn, line, msg)
+}
+
 // Add appends a child.
 func (node *Node) Add(child *Node) {
+	if child == nil {
+		return
+	}
 	node.children = append(node.children, *child)
 }
 
@@ -126,13 +156,20 @@ func H(nodes ...interface{}) *Node {
 		}
 		nodes = nodes[1:]
 	}
+
 	for _, n := range nodes {
+		if n == nil {
+			continue
+		}
 		switch cnode := n.(type) {
 		case string:
 			child := Node{}
 			child.text = cnode
 			node.children = append(node.children, child)
 		case *Node:
+			if cnode == nil {
+				continue
+			}
 			if cnode.err != nil {
 				node.err = cnode.err
 				return node
@@ -155,8 +192,25 @@ func H(nodes ...interface{}) *Node {
 				node.attributes[key] = parsedValue
 			}
 		case Style:
+			keys := sortedKeyForInterfaceMap(cnode)
+			buf := bytes.Buffer{}
+			for _, key := range keys {
+				valueRaw := cnode[key]
+				switch value := valueRaw.(type) {
+				case string:
+					fmt.Fprintf(&buf, "%s:%s;", key, value)
+				default:
+					node.err = errorfDepth(1, "invalid style value")
+					return node
+				}
+			}
+			node.attributes["style"] = buf.String()
+		case DangerousRaw:
+			child := Node{}
+			child.raw = string(cnode)
+			node.children = append(node.children, child)
 		default:
-			node.err = fmt.Errorf("invalid argument %v", n)
+			node.err = errorfDepth(1, "invalid argument %+v", n)
 			return node
 		}
 	}
