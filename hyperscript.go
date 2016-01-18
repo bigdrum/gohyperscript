@@ -192,6 +192,9 @@ func H(nodes ...interface{}) *Node {
 				node.attributes[key] = parsedValue
 			}
 		case Style:
+			if len(cnode) == 0 {
+				continue
+			}
 			keys := sortedKeyForInterfaceMap(cnode)
 			buf := bytes.Buffer{}
 			for _, key := range keys {
