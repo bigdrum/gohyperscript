@@ -1,221 +1,250 @@
-package hyperscript
+package h
 
 import (
 	"bytes"
 	"fmt"
-	"runtime"
-	"sort"
+	"html"
 	"strings"
 )
 
-// Node represents a virtual dom node.
-type Node struct {
-	tag        string
-	text       string
-	raw        string
-	attributes map[string]string
-	classNames map[string]bool
-	children   []Node
-	err        error
+type StringWriter interface {
+	WriteString(s string) (int, error)
 }
 
-// Attr specifies DOM attributes of a node.
-type Attr map[string]interface{}
-
-// Style provides a conenient way to specify the inline style a node.
-type Style map[string]interface{}
-
-// DangerousRaw outputs unescaped string. Use at your own risk.
-type DangerousRaw string
-
-func sortedKeyForInterfaceMap(m map[string]interface{}) []string {
-	l := make([]string, len(m))
-	i := 0
-	for k := range m {
-		l[i] = k
-		i++
-	}
-	sort.Strings(l)
-	return l
+type Token interface {
+	ICanBeToken()
 }
 
-func parseTag(tag string) (string, string, []string, error) {
-	tagEnd := -1
-	idStart := -1
-	id := ""
-	classStart := -1
-	var classNames []string
-
-	tlen := len(tag)
-	for i, c := range tag {
-		if c == '>' || c == '<' {
-			return "", "", nil, fmt.Errorf("special charactor not supported for tag/class/id: %s", tag)
-		}
-		if c == '#' {
-			if tagEnd == -1 {
-				tagEnd = i
-			}
-			if idStart >= 0 {
-				return "", "", nil, fmt.Errorf("id specified more than once: %s", tag)
-			}
-			if classStart >= 0 {
-				classNames = append(classNames, tag[classStart:i])
-				classStart = -1
-			}
-			idStart = i + 1
-			continue
-		}
-		if c == '.' {
-			if tagEnd == -1 {
-				tagEnd = i
-			}
-			if idStart >= 0 && id == "" {
-				id = tag[idStart:i]
-			}
-			if classStart >= 0 {
-				classNames = append(classNames, tag[classStart:i])
-			}
-			classStart = i + 1
-		}
-	}
-	if classStart >= 0 {
-		classNames = append(classNames, tag[classStart:tlen])
-	} else if idStart >= 0 && id == "" {
-		id = tag[idStart:tlen]
-	} else {
-		tagEnd = tlen
-	}
-
-	pureTag := "div"
-	if tagEnd > 0 {
-		pureTag = tag[:tagEnd]
-	}
-	return pureTag, id, classNames, nil
+type N interface {
+	Token
+	ToHTML(w StringWriter) error
 }
 
-func parseAttrValue(key string, value interface{}) (string, error) {
-	switch v := value.(type) {
-	case string:
-		return v, nil
-	}
-	return "", fmt.Errorf("invalid attribute value")
+type tagNode struct {
+	tag  string
+	toks []interface{}
 }
 
-func parseClassNames(value interface{}, classNames map[string]bool) error {
-	switch v := value.(type) {
-	case string:
-		for _, name := range strings.Split(v, " ") {
-			classNames[name] = true
-		}
-		return nil
-	case map[string]bool:
-		for name, on := range v {
-			classNames[name] = on
-		}
-		return nil
-	default:
-		return fmt.Errorf("invalid class attribute value %v", value)
-	}
-}
+type List []N
 
-func errorfDepth(depth int, format string, a ...interface{}) error {
-	_, fn, line, _ := runtime.Caller(depth + 1)
-	msg := fmt.Sprintf(format, a...)
-	return fmt.Errorf("%v, %v: %s", fn, line, msg)
-}
+func (ns List) ICanBeToken() {}
 
-// Add appends a child.
-func (node *Node) Add(child *Node) {
-	if child == nil {
-		return
-	}
-	node.children = append(node.children, *child)
-}
-
-// H constructs a virtual DOM node.
-func H(nodes ...interface{}) *Node {
-	node := &Node{}
-	if len(nodes) == 0 {
-		return node
-	}
-
-	if tag, ok := nodes[0].(string); ok {
-		tag, id, classNames, err := parseTag(tag)
-		node.tag = tag
+func (ns List) ToHTML(w StringWriter) error {
+	for _, n := range ns {
+		err := n.ToHTML(w)
 		if err != nil {
-			node.err = err
-			return node
+			return err
 		}
-		node.attributes = map[string]string{}
-		if id != "" {
-			node.attributes["id"] = id
-		}
-		node.classNames = map[string]bool{}
-		for i := range classNames {
-			node.classNames[classNames[i]] = true
-		}
-		nodes = nodes[1:]
+	}
+	return nil
+}
+
+func (ns *List) Add(n N) {
+	*ns = append(*ns, n)
+}
+
+func L(nlist ...N) List {
+	return List(nlist)
+}
+
+type Attrs []KV
+
+func (a Attrs) ICanBeToken() {}
+
+type KV struct {
+	K string
+	V string
+}
+
+func Attr(k, v string) KV {
+	return KV{K: k, V: v}
+}
+
+func (a KV) ICanBeToken() {}
+
+type S string
+
+func (s S) ICanBeToken() {}
+
+func (s S) ToHTML(w StringWriter) error {
+	w.WriteString(html.EscapeString(string(s)))
+	return nil
+}
+
+func (s S) String() string {
+	return string(s)
+}
+
+type DangerousUnescaped string
+
+func (s DangerousUnescaped) ICanBeToken() {}
+
+func (s DangerousUnescaped) ToHTML(w StringWriter) error {
+	w.WriteString(string(s))
+	return nil
+}
+
+func H(tag string, nodes ...interface{}) N {
+	return tagNode{tag, nodes}
+}
+
+func (t tagNode) ICanBeToken() {}
+
+func (t tagNode) ToHTML(w StringWriter) error {
+	tag, id, classNames, err := parseTag(t.tag)
+	if err != nil {
+		return err
 	}
 
-	for _, n := range nodes {
+	w.WriteString("<")
+	w.WriteString(tag)
+
+	if id != "" {
+		w.WriteString(` id="`)
+		w.WriteString(id)
+		w.WriteString(`"`)
+	}
+
+	childrenOutputBegan := false
+	for _, n := range t.toks {
 		if n == nil {
 			continue
 		}
 		switch cnode := n.(type) {
-		case string:
-			child := Node{}
-			child.text = cnode
-			node.children = append(node.children, child)
-		case *Node:
-			if cnode == nil {
-				continue
+		case Attrs:
+			if childrenOutputBegan {
+				return fmt.Errorf("all attributes must be specified before children, violating attr: %v", cnode)
 			}
-			if cnode.err != nil {
-				node.err = cnode.err
-				return node
-			}
-			node.children = append(node.children, *cnode)
-		case Attr:
-			for key, value := range cnode {
-				if key == "class" {
-					err := parseClassNames(value, node.classNames)
-					if err != nil {
-						node.err = err
+			for _, attr := range cnode {
+				if attr.K == "class" {
+					if strings.ContainsAny(attr.V, `<>"`) {
+						return fmt.Errorf("class name contains invalid character: %s", classNames)
 					}
-					continue
-				}
-				parsedValue, err := parseAttrValue(key, value)
-				if err != nil {
-					node.err = err
-					return node
-				}
-				node.attributes[key] = parsedValue
-			}
-		case Style:
-			if len(cnode) == 0 {
-				continue
-			}
-			keys := sortedKeyForInterfaceMap(cnode)
-			buf := bytes.Buffer{}
-			for _, key := range keys {
-				valueRaw := cnode[key]
-				switch value := valueRaw.(type) {
-				case string:
-					fmt.Fprintf(&buf, "%s:%s;", key, value)
-				default:
-					node.err = errorfDepth(1, "invalid style value")
-					return node
+					classNames = append(classNames, attr.V)
+				} else {
+					w.WriteString(` `)
+					w.WriteString(attr.K)
+					w.WriteString(`="`)
+					w.WriteString(html.EscapeString(attr.V))
+					w.WriteString(`"`)
 				}
 			}
-			node.attributes["style"] = buf.String()
-		case DangerousRaw:
-			child := Node{}
-			child.raw = string(cnode)
-			node.children = append(node.children, child)
+		case KV:
+			if childrenOutputBegan {
+				return fmt.Errorf("all attributes must be specified before children, violating attr: %v", cnode)
+			}
+			if cnode.K == "class" {
+				if strings.ContainsAny(cnode.V, `<>"`) {
+					return fmt.Errorf("class name contains invalid character: %s", classNames)
+				}
+				classNames = append(classNames, cnode.V)
+			} else {
+				w.WriteString(` `)
+				w.WriteString(cnode.K)
+				w.WriteString(`="`)
+				w.WriteString(html.EscapeString(cnode.V))
+				w.WriteString(`"`)
+			}
 		default:
-			node.err = errorfDepth(1, "invalid argument %+v", n)
-			return node
+			if childrenOutputBegan == false {
+				if len(classNames) > 0 {
+					w.WriteString(` class="`)
+					w.WriteString(classNames[0])
+					for _, c := range classNames[1:] {
+						w.WriteString(" ")
+						w.WriteString(c)
+					}
+					w.WriteString(`"`)
+				}
+				w.WriteString(">")
+			}
+			childrenOutputBegan = true
+
+			switch cnode := n.(type) {
+			case string:
+				w.WriteString(html.EscapeString(cnode))
+			case N:
+				err := cnode.ToHTML(w)
+				if err != nil {
+					return err
+				}
+			default:
+				return fmt.Errorf("Invalid node %v", n)
+			}
 		}
 	}
-	return node
+	if childrenOutputBegan {
+		w.WriteString("</")
+		w.WriteString(tag)
+		w.WriteString(">")
+	} else {
+		if len(classNames) > 0 {
+			w.WriteString(` class="`)
+			w.WriteString(classNames[0])
+			for _, c := range classNames[1:] {
+				w.WriteString(" ")
+				w.WriteString(c)
+			}
+			if isVoidElement(tag) {
+				w.WriteString(`"/>`)
+				return nil
+			}
+			w.WriteString(`"></`)
+		} else {
+			if isVoidElement(tag) {
+				w.WriteString(`/>`)
+				return nil
+			}
+			w.WriteString(`></`)
+		}
+		w.WriteString(tag)
+		w.WriteString(">")
+	}
+	return nil
+}
+
+func ToString(n N) (string, error) {
+	buf := bytes.Buffer{}
+	err := n.ToHTML(&buf)
+	if err != nil {
+		return "", err
+	}
+	return string(buf.Bytes()), nil
+}
+
+func isVoidElement(s string) bool {
+	// https://www.w3.org/TR/html5/syntax.html#void-elements
+	switch s {
+	case "area":
+		return true
+	case "base":
+		return true
+	case "br":
+		return true
+	case "col":
+		return true
+	case "embed":
+		return true
+	case "hr":
+		return true
+	case "img":
+		return true
+	case "input":
+		return true
+	case "keygen":
+		return true
+	case "link":
+		return true
+	case "meta":
+		return true
+	case "param":
+		return true
+	case "source":
+		return true
+	case "track":
+		return true
+	case "wbr":
+		return true
+	}
+	return false
 }
