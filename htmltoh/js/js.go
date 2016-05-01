@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bitbucket.org/applysquare/applysquare-go/pkg/util/h/htmltoh"
+	"github.com/bigdrum/gohyperscript/htmltoh"
 	"github.com/gopherjs/gopherjs/js"
 )
 
