@@ -1,10 +1,11 @@
 # gohyperscript
 Creates virtual dom trees.
 
+# HTMLToH
+http://bigdrum.github.io/gohyperscript
+
 # TODO
-- [ ] Escape attributes.
-- [ ] Validate tag, attribute key.
-- [ ] Provide stack trace for errors.
-- [ ] Special support for style.
-- [ ] Tune performance.
+- [x] Escape attributes.
+- [x] Validate tag, attribute key.
+- [x] Tune performance.
 - [ ] Context aware escape.
