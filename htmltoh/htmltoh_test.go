@@ -375,6 +375,10 @@ func TestBasic(t *testing.T) {
 		{
 			src: `<html>`,
 		},
+		{
+			src: "<p>`h\"i`</p>",
+			dst: "h.H(\"p\", \"`h\\\"i`\")",
+		},
 	}
 	for i, c := range cases {
 		hcode, err := HTMLToH(c.src)

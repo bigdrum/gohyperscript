@@ -158,15 +158,7 @@ func HTMLToH(source string) (string, error) {
 			if text == "" {
 				return
 			}
-			buf.WriteString("`")
-			// if n.Data[0] == ' ' {
-			// 	buf.WriteString(" ")
-			// }
-			buf.WriteString(text)
-			// if n.Data[len(n.Data)-1] == ' ' {
-			// 	buf.WriteString(" ")
-			// }
-			buf.WriteString("`")
+			quoteText(&buf, text)
 			if inTag {
 				buf.WriteString(",\n")
 			}
@@ -179,8 +171,7 @@ func HTMLToH(source string) (string, error) {
 	dst := buf.Bytes()
 	formatted, err := format.Source(dst)
 	if err != nil {
-		fmt.Println(string(dst))
-		return "", err
+		return string(dst), err
 	}
 	return string(formatted), nil
 }
