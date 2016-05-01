@@ -69,6 +69,9 @@ func HTMLToH(source string) (string, error) {
 			}
 			if classNames != "" {
 				for _, cls := range strings.Split(classNames, " ") {
+					if cls == "" {
+						continue
+					}
 					buf.WriteString(".")
 					buf.WriteString(cls)
 				}
@@ -109,6 +112,35 @@ func HTMLToH(source string) (string, error) {
 
 		switch n.Type {
 		case html.DocumentNode:
+			skipToBody := func() *html.Node {
+				htmlNode := n.FirstChild
+				if htmlNode == nil {
+					return nil
+				}
+				if len(htmlNode.Attr) > 0 {
+					return nil
+				}
+				if htmlNode.Data != "html" {
+					return nil
+				}
+				headNode := htmlNode.FirstChild
+				if headNode == nil {
+					return nil
+				}
+				if len(headNode.Attr) > 0 {
+					return nil
+				}
+				if headNode.FirstChild != nil {
+					return nil
+				}
+				if headNode.Data != "head" {
+					return nil
+				}
+				return headNode.NextSibling
+			}()
+			if skipToBody != nil {
+				n = skipToBody
+			}
 			walkChildren(false)
 			return
 		case html.DoctypeNode:

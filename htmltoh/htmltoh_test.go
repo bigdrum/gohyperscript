@@ -25,7 +25,7 @@ func TestBasic(t *testing.T) {
     </h1>
   </body>
 </html> `,
-			dst: `errror`,
+			dst: `_none_empty`,
 		},
 		{
 			src: `<!DOCTYPE html>
@@ -366,7 +366,14 @@ func TestBasic(t *testing.T) {
   </body>
 </html>
 `,
-			dst: "",
+			dst: "_none_empty",
+		},
+		{
+			src: `<div class=" hi  hello   kk  ">pp</div>`,
+			dst: `h.H("div.hi.hello.kk", ` + "`pp`)",
+		},
+		{
+			src: `<html>`,
 		},
 	}
 	for i, c := range cases {
@@ -375,7 +382,11 @@ func TestBasic(t *testing.T) {
 			t.Error(i, err)
 			continue
 		}
-		if hcode != c.dst {
+		if c.dst == "_none_empty" {
+			if hcode == "" {
+				t.Error("cannot convert, ", i, c.src)
+			}
+		} else if hcode != c.dst {
 			t.Error(i, c.dst, hcode)
 		}
 	}
